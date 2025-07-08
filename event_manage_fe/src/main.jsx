@@ -1,14 +1,19 @@
+import './index.css'
+import  './api/axiosClient'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import { store } from './app/store'
+import { BrowserRouter } from 'react-router-dom'
 import { Provider } from 'react-redux'
-import './index.css'
+import store from './app/store'
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+const root = ReactDOM.createRoot(document.getElementById('root'))
+root.render(
   <React.StrictMode>
     <Provider store={store}>
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </Provider>
   </React.StrictMode>
 )
