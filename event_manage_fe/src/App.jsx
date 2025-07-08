@@ -8,6 +8,7 @@ import EventForm   from './pages/EventForm';
 import EventDetail from './pages/EventDetail';
 import Profile     from './pages/Profile';
 import Register from './pages/Register'
+import AdminUsers    from './pages/AdminUsers'
 
 
 export default function App() {
@@ -28,6 +29,11 @@ export default function App() {
           <Route path="/events/new" element={<EventForm />} />
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/profile"    element={<Profile />} />
+         
+        <Route path="/admin/users" element={<AdminUsers />} />
+      
+
+          
         </Route>
 
         {/* catch-all */}

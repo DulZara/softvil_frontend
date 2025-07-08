@@ -1,80 +1,205 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import client from '../api/axiosClient'
+import React from 'react'
+import { useForm, Controller } from 'react-hook-form'
+import { yupResolver } from '@hookform/resolvers/yup'
+import dayjs from 'dayjs'
+import { useNavigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import {
+  Box,
+  Paper,
+  Typography,
+  TextField,
+  MenuItem,
+  Button,
+  Alert,
+  CircularProgress,
+} from '@mui/material'
+import {
+  LocalizationProvider,
+  DateTimePicker,
+} from '@mui/x-date-pickers'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+
+import axiosClient from '../api/axiosClient'
+import { eventSchema } from '../validations/eventSchema'
 
 export default function EventForm() {
-  const { id } = useParams()
-  const isEditing = Boolean(id)
-  const [form, setForm] = useState({
-    title: '', description: '', hostId: '', startTime: '', endTime: '', location: '', visibility: 'PUBLIC'
-  })
-  const [error, setError] = useState(null)
   const navigate = useNavigate()
+  const userEmail = useSelector(state => state.auth.email)
 
-  useEffect(() => {
-    if (isEditing) {
-      client.get(`/event/${id}`)
-        .then(res => {
-          const e = res.data
-          setForm({
-            title: e.title,
-            description: e.description,
-            hostId: e.hostId,
-            startTime: e.startTime,
-            endTime: e.endTime,
-            location: e.location,
-            visibility: e.visibility
-          })
-        })
-        .catch(err => setError(err.response?.data?.message))
-    }
-  }, [id, isEditing])
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting, isSubmitSuccessful },
+  } = useForm({
+    resolver: yupResolver(eventSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      startTime: null,
+      endTime: null,
+      location: '',
+      visibility: 'PUBLIC',
+    },
+  })
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setForm(f => ({ ...f, [name]: value }))
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const onSubmit = async data => {
+    console.log('🛫 Submitting event:', data)
     try {
-      if (isEditing) {
-        await client.put(`/event/${id}`, form)
-      } else {
-        await client.post('/event/add', form)
-      }
-      navigate('/')
+      await axiosClient.post('/event/add', {
+        ...data,
+        hostId: userEmail,
+      })
+      navigate('/') // back to dashboard
     } catch (err) {
-      setError(err.response?.data?.message)
+      console.error('Event creation failed:', err)
+      // you could set a local error state here if you want to show a message
     }
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: 600 }}>
-      <h1>{isEditing ? 'Edit Event' : 'New Event'}</h1>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <form onSubmit={handleSubmit}>
-        {['title','description','hostId','startTime','endTime','location'].map(field => (
-          <div key={field} style={{ margin: '1em 0' }}>
-            <label style={{ textTransform: 'capitalize' }}>{field}</label><br/>
-            <input
-              name={field}
-              value={form[field]}
-              onChange={handleChange}
-              required
-              style={{ width: '100%' }}
+    <Box
+      component="form"
+      onSubmit={handleSubmit(onSubmit)}
+      sx={{ maxWidth: 600, mx: 'auto', mt: 4, p: 2 }}
+    >
+      <Paper sx={{ p: 4 }}>
+        <Typography variant="h6" gutterBottom>
+          Create New Event
+        </Typography>
+
+        {isSubmitSuccessful && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            Event created successfully!
+          </Alert>
+        )}
+
+        <Controller
+          name="title"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Title"
+              fullWidth
+              margin="normal"
+              error={!!errors.title}
+              helperText={errors.title?.message}
             />
-          </div>
-        ))}
-        <div style={{ margin: '1em 0' }}>
-          <label>visibility</label><br/>
-          <select name="visibility" value={form.visibility} onChange={handleChange}>
-            <option value="PUBLIC">PUBLIC</option>
-            <option value="PRIVATE">PRIVATE</option>
-          </select>
-        </div>
-        <button type="submit">{isEditing ? 'Update' : 'Create'}</button>
-      </form>
-    </div>
+          )}
+        />
+
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Description"
+              fullWidth
+              multiline
+              rows={4}
+              margin="normal"
+              error={!!errors.description}
+              helperText={errors.description?.message}
+            />
+          )}
+        />
+
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <Controller
+            name="startTime"
+            control={control}
+            render={({ field }) => (
+              <DateTimePicker
+                {...field}
+                label="Start Time"
+                value={field.value ? dayjs(field.value) : null}
+                onChange={newVal =>
+                  field.onChange(newVal ? newVal.toISOString() : null)
+                }
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    margin="normal"
+                    error={!!errors.startTime}
+                    helperText={errors.startTime?.message}
+                  />
+                )}
+              />
+            )}
+          />
+
+          <Controller
+            name="endTime"
+            control={control}
+            render={({ field }) => (
+              <DateTimePicker
+                {...field}
+                label="End Time"
+                value={field.value ? dayjs(field.value) : null}
+                onChange={newVal =>
+                  field.onChange(newVal ? newVal.toISOString() : null)
+                }
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    margin="normal"
+                    error={!!errors.endTime}
+                    helperText={errors.endTime?.message}
+                  />
+                )}
+              />
+            )}
+          />
+        </LocalizationProvider>
+
+        <Controller
+          name="location"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Location"
+              fullWidth
+              margin="normal"
+              error={!!errors.location}
+              helperText={errors.location?.message}
+            />
+          )}
+        />
+
+        <Controller
+          name="visibility"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              select
+              label="Visibility"
+              fullWidth
+              margin="normal"
+              error={!!errors.visibility}
+              helperText={errors.visibility?.message}
+            >
+              <MenuItem value="PUBLIC">Public</MenuItem>
+              <MenuItem value="PRIVATE">Private</MenuItem>
+            </TextField>
+          )}
+        />
+
+        <Button
+          type="submit"
+          variant="contained"
+          fullWidth
+          sx={{ mt: 3 }}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Create Event'}
+        </Button>
+      </Paper>
+    </Box>
   )
 }
